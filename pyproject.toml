@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omoduo"
+version = "0.1.0"
+description = "Native 3-pane terminal TUI orchestrator pairing Claude and Antigravity on Omarchy"
+authors = [{ name = "xn0xinx" }]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "textual>=0.80.0",
+]
+
+[project.scripts]
+omoduo = "omoduo.app:run"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

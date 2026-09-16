@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REAL_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(dirname "$REAL_PATH")"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+export PYTHONPATH="$ROOT_DIR:${PYTHONPATH:-}"
+exec "$ROOT_DIR/.venv/bin/python" -m omoduo.app "$@"
