@@ -5,6 +5,7 @@ from textual.containers import Vertical
 from textual.widgets import Static, RichLog, Input
 from rich.text import Text
 from rich.panel import Panel
+from rich.markup import escape
 from omoduo.theme import TOKYO_NIGHT
 
 class ConversationPane(Vertical):
@@ -23,7 +24,7 @@ class ConversationPane(Vertical):
 
     def post_user_message(self, message: str):
         """Displays user message in the thread."""
-        self.log_view.write(f"\n[bold {TOKYO_NIGHT['user_accent']}]You[/]: {message}")
+        self.log_view.write(f"\n[bold {TOKYO_NIGHT['user_accent']}]You[/]: {escape(message)}")
 
     def post_system_message(self, message: str):
         """Displays a system/routing notice in the thread."""
@@ -38,4 +39,4 @@ class ConversationPane(Vertical):
         else:
             color = TOKYO_NIGHT["success"]
 
-        self.log_view.write(f"\n[bold {color}]{speaker}[/]:\n{message}\n")
+        self.log_view.write(f"\n[bold {color}]{speaker}[/]:\n{escape(message)}\n")

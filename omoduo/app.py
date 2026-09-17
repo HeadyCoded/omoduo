@@ -22,6 +22,7 @@ class OmoduoApp(App):
         Binding("escape", "quit", "Quit", show=True),
         Binding("ctrl+c", "quit", "Quit", show=False),
         Binding("ctrl+l", "clear_panes", "Clear Work Panes", show=True),
+        Binding("ctrl+x", "cancel_turn", "Cancel Turn", show=True),
     ]
 
     def __init__(self, orchestrator: Orchestrator | None = None, **kwargs):
@@ -109,6 +110,17 @@ class OmoduoApp(App):
         self.claude_pane.clear_pane()
         self.agy_pane.clear_pane()
         self.conversation_pane.post_system_message("Work panes cleared.")
+
+    def action_cancel_turn(self):
+        """Action for Ctrl+X shortcut: aborts the in-flight engine turn, if any."""
+        if not self.orchestrator.is_busy:
+            return
+        self.orchestrator.cancel_active()
+        self.claude_pane.set_status("Idle")
+        self.agy_pane.set_status("Idle")
+        self.status_bar.update_engine("claude", "Idle")
+        self.status_bar.update_engine("agy", "Idle")
+        self.conversation_pane.post_system_message("Turn cancelled.")
 
 def run():
     app = OmoduoApp()

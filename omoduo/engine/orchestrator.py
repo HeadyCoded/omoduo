@@ -1,10 +1,14 @@
 """Orchestrator coordinating TaskRouter, ClaudeRunner, and AgyRunner."""
 
+from __future__ import annotations
 import asyncio
 from typing import Callable, Any
+
 from omoduo.engine.router import TaskRouter, RoutingDecision
 from omoduo.engine.claude_runner import ClaudeRunner
 from omoduo.engine.agy_runner import AgyRunner
+from omoduo.engine.events import RunnerEvent
+
 
 class Orchestrator:
     """Coordinates dual engines, conversation memory, state locks, and event streaming."""
@@ -73,12 +77,31 @@ class Orchestrator:
                     on_status_change("agy", "Idle")
                     on_conversation_chunk("system", f"Routed to Claude: {decision.reason}")
 
-                    claude_buffer = []
-                    async for chunk in self.claude_runner.stream(contextual_prompt, cwd=cwd):
-                        on_claude_chunk(chunk)
-                        claude_buffer.append(chunk)
+                    claude_work: list[str] = []
+                    final_reply = ""
 
-                    reply = "".join(claude_buffer).strip()
+                    async for event in self.claude_runner.stream(contextual_prompt, cwd=cwd):
+                        kind = getattr(event, "kind", "work")
+                        if kind == "tool_call":
+                            tool = getattr(event, "tool_name", "")
+                            on_status_change("claude", f"Tool: {tool}" if tool else "Tool")
+                            on_claude_chunk(str(event))
+                        elif kind in ("tool_result", "thinking", "work"):
+                            on_claude_chunk(str(event))
+                        elif kind == "delta":
+                            on_status_change("claude", "Responding")
+                        elif kind == "final":
+                            final_reply = getattr(event, "final_text", str(event))
+                            on_claude_chunk(str(event))
+                        elif kind == "error":
+                            on_claude_chunk(str(event))
+                        else:
+                            on_claude_chunk(str(event))
+
+                        if not final_reply and isinstance(event, str):
+                            claude_work.append(str(event))
+
+                    reply = final_reply.strip() or "".join(claude_work).strip()
                     self.history.append({"speaker": "Claude", "text": reply})
                     on_conversation_chunk("Claude", reply)
                     on_status_change("claude", "Finished")
@@ -88,18 +111,40 @@ class Orchestrator:
                     on_status_change("claude", "Idle")
                     on_conversation_chunk("system", f"Routed to Antigravity: {decision.reason}")
 
-                    agy_buffer = []
-                    async for chunk in self.agy_runner.stream(contextual_prompt, cwd=cwd):
-                        on_agy_chunk(chunk)
-                        agy_buffer.append(chunk)
+                    agy_work: list[str] = []
+                    final_reply = ""
 
-                    reply = "".join(agy_buffer).strip()
+                    async for event in self.agy_runner.stream(contextual_prompt, cwd=cwd):
+                        kind = getattr(event, "kind", "work")
+                        if kind == "tool_call":
+                            tool = getattr(event, "tool_name", "")
+                            on_status_change("agy", f"Tool: {tool}" if tool else "Tool")
+                            on_agy_chunk(str(event))
+                        elif kind in ("tool_result", "thinking", "work"):
+                            on_agy_chunk(str(event))
+                        elif kind == "delta":
+                            on_status_change("agy", "Responding")
+                        elif kind == "final":
+                            final_reply = getattr(event, "final_text", str(event))
+                            on_agy_chunk(str(event))
+                        elif kind == "error":
+                            on_agy_chunk(str(event))
+                        else:
+                            on_agy_chunk(str(event))
+
+                        if not final_reply and isinstance(event, str):
+                            agy_work.append(str(event))
+
+                    reply = final_reply.strip() or "".join(agy_work).strip()
                     self.history.append({"speaker": "Antigravity", "text": reply})
                     on_conversation_chunk("Antigravity", reply)
                     on_status_change("agy", "Finished")
 
                 elif decision.primary_engine == "both":
-                    on_conversation_chunk("system", "Collaborative turn: Antigravity drafting spec/frames, then Claude implementing...")
+                    on_conversation_chunk(
+                        "system",
+                        "Collaborative turn: Antigravity drafting spec/frames, then Claude implementing...",
+                    )
 
                     # Stage 1: Antigravity
                     on_status_change("agy", "Running (Stage 1)")
@@ -108,13 +153,29 @@ class Orchestrator:
                         f"{contextual_prompt}\n\n"
                         "[Collaboration Note]: You are Stage 1 (Architect / Asset Designer). Provide the complete spec, design, or ASCII frames so Claude can package and implement it in Stage 2."
                     )
-                    agy_buffer = []
-                    async for chunk in self.agy_runner.stream(agy_stage_prompt, cwd=cwd):
-                        on_agy_chunk(chunk)
-                        agy_buffer.append(chunk)
-                    on_status_change("agy", "Complete")
+                    agy_work = []
+                    agy_final_reply = ""
+                    async for event in self.agy_runner.stream(agy_stage_prompt, cwd=cwd):
+                        kind = getattr(event, "kind", "work")
+                        if kind == "tool_call":
+                            tool = getattr(event, "tool_name", "")
+                            on_status_change("agy", f"Stage 1: {tool}" if tool else "Stage 1: Tool")
+                            on_agy_chunk(str(event))
+                        elif kind in ("tool_result", "thinking", "work"):
+                            on_agy_chunk(str(event))
+                        elif kind == "final":
+                            agy_final_reply = getattr(event, "final_text", str(event))
+                            on_agy_chunk(str(event))
+                        elif kind == "error":
+                            on_agy_chunk(str(event))
+                        else:
+                            on_agy_chunk(str(event))
 
-                    agy_result = "".join(agy_buffer).strip()
+                        if not agy_final_reply and isinstance(event, str):
+                            agy_work.append(str(event))
+
+                    on_status_change("agy", "Complete")
+                    agy_result = agy_final_reply.strip() or "".join(agy_work).strip()
 
                     # Stage 2: Claude with Antigravity's context
                     on_status_change("claude", "Running (Stage 2)")
@@ -123,13 +184,29 @@ class Orchestrator:
                         f"[Context and Assets from Antigravity]:\n{agy_result}\n\n"
                         "[Collaboration Note]: You are Stage 2 (Implementer / Packager). Take Antigravity's spec and assets above and write the code, create files, and deliver the working application as requested."
                     )
-                    claude_buffer = []
-                    async for chunk in self.claude_runner.stream(claude_stage_prompt, cwd=cwd):
-                        on_claude_chunk(chunk)
-                        claude_buffer.append(chunk)
+                    claude_work = []
+                    claude_final_reply = ""
+                    async for event in self.claude_runner.stream(claude_stage_prompt, cwd=cwd):
+                        kind = getattr(event, "kind", "work")
+                        if kind == "tool_call":
+                            tool = getattr(event, "tool_name", "")
+                            on_status_change("claude", f"Stage 2: {tool}" if tool else "Stage 2: Tool")
+                            on_claude_chunk(str(event))
+                        elif kind in ("tool_result", "thinking", "work"):
+                            on_claude_chunk(str(event))
+                        elif kind == "final":
+                            claude_final_reply = getattr(event, "final_text", str(event))
+                            on_claude_chunk(str(event))
+                        elif kind == "error":
+                            on_claude_chunk(str(event))
+                        else:
+                            on_claude_chunk(str(event))
+
+                        if not claude_final_reply and isinstance(event, str):
+                            claude_work.append(str(event))
 
                     on_status_change("claude", "Complete")
-                    reply = "".join(claude_buffer).strip()
+                    reply = claude_final_reply.strip() or "".join(claude_work).strip()
                     self.history.append({"speaker": "Claude & Antigravity", "text": reply})
                     on_conversation_chunk("Claude & Antigravity", reply)
 
