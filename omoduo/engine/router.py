@@ -62,6 +62,29 @@ class TaskRouter:
                 reason="Explicit @both prefix",
                 clean_prompt=stripped[prefix_len:].strip(),
             )
+        if stripped.startswith("@remote ") or stripped.startswith("@local "):
+            prefix_len = 8 if stripped.startswith("@remote ") else 7
+            return RoutingDecision(
+                primary_engine="remote",
+                consult_engine=None,
+                reason="Explicit @remote prefix",
+                clean_prompt=stripped[prefix_len:].strip(),
+            )
+        if stripped.startswith("@all ") or stripped.startswith("@compare "):
+            prefix_len = 5 if stripped.startswith("@all ") else 9
+            return RoutingDecision(
+                primary_engine="all",
+                consult_engine=None,
+                reason="Explicit @all prefix (concurrent 3-way comparison)",
+                clean_prompt=stripped[prefix_len:].strip(),
+            )
+        if stripped.startswith("@duo "):
+            return RoutingDecision(
+                primary_engine="duo",
+                consult_engine=None,
+                reason="Explicit @duo prefix (Antigravity + remote agent staged collaboration)",
+                clean_prompt=stripped[5:].strip(),
+            )
 
         lower = stripped.lower()
 
@@ -96,7 +119,7 @@ class TaskRouter:
                 )
 
         # 5. Follow-up / context stickiness: if prompt is brief conversation, stick with last active engine
-        if last_engine in ("claude", "agy", "both") and len(stripped.split()) < 8:
+        if last_engine in ("claude", "agy", "both", "remote", "all", "duo") and len(stripped.split()) < 8:
             return RoutingDecision(
                 primary_engine=last_engine,
                 consult_engine=None,

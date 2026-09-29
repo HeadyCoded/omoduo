@@ -8,3 +8,4 @@ dist/
 build/
 *.svg
 .DS_Store
+.aider*

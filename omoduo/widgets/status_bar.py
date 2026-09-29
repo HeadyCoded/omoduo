@@ -13,6 +13,8 @@ class StatusBar(Static):
         super().__init__(**kwargs)
         self.claude_status = "Idle"
         self.agy_status = "Idle"
+        self.remote_status = "Idle"
+        self.rig_reachable: bool | None = None  # None = not checked yet
         self.cwd = os.getcwd()
         self.branch = self._get_git_branch()
 
@@ -31,12 +33,21 @@ class StatusBar(Static):
     def render(self) -> str:
         claude_color = TOKYO_NIGHT["claude_accent"] if self.claude_status != "Idle" else TOKYO_NIGHT["fg_dim"]
         agy_color = TOKYO_NIGHT["agy_accent"] if self.agy_status != "Idle" else TOKYO_NIGHT["fg_dim"]
+        remote_color = TOKYO_NIGHT["remote_accent"] if self.remote_status != "Idle" else TOKYO_NIGHT["fg_dim"]
+
+        if self.rig_reachable is None:
+            rig_badge = "[dim]rig: checking...[/]"
+        elif self.rig_reachable:
+            rig_badge = f"[{TOKYO_NIGHT['success']}]rig: up[/]"
+        else:
+            rig_badge = f"[{TOKYO_NIGHT['error']}]rig: unreachable[/]"
 
         return (
             f"[dim]{self.cwd}[/] "
             f"([bold #7aa2f7]{self.branch}[/])  |  "
             f"Claude: [{claude_color}]{self.claude_status}[/]  |  "
             f"Antigravity: [{agy_color}]{self.agy_status}[/]  |  "
+            f"Remote: [{remote_color}]{self.remote_status}[/] ({rig_badge})  |  "
             f"[dim]ESC: quit[/]"
         )
 
@@ -45,4 +56,10 @@ class StatusBar(Static):
             self.claude_status = status
         elif engine == "agy":
             self.agy_status = status
+        elif engine == "remote":
+            self.remote_status = status
+        self.refresh()
+
+    def set_rig_reachable(self, reachable: bool):
+        self.rig_reachable = reachable
         self.refresh()

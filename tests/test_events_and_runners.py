@@ -137,6 +137,7 @@ def test_orchestrator_collaborative_both_route():
             on_status_change=lambda eng, st: statuses.append((eng, st)),
             on_claude_chunk=lambda ch: claude_chunks.append(ch),
             on_agy_chunk=lambda ch: agy_chunks.append(ch),
+            on_remote_chunk=lambda ch: None,
             on_conversation_chunk=lambda spk, tx: convo_chunks.append((spk, tx)),
         )
 

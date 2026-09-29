@@ -12,6 +12,8 @@ TOKYO_NIGHT = {
     "claude_header": "#e0af68",
     "agy_accent": "#7dcfff",
     "agy_header": "#7aa2f7",
+    "remote_accent": "#9ece6a",
+    "remote_header": "#73daca",
     "user_accent": "#bb9af7",
     "success": "#9ece6a",
     "warning": "#e0af68",
@@ -39,7 +41,7 @@ Screen {{
 }}
 
 .work-pane {{
-    width: 28%;
+    width: 20%;
     height: 100%;
     background: {TOKYO_NIGHT["surface"]};
     border: solid {TOKYO_NIGHT["border"]};
@@ -58,8 +60,12 @@ Screen {{
     border-title-color: {TOKYO_NIGHT["agy_header"]};
 }}
 
+#remote-pane {{
+    border-title-color: {TOKYO_NIGHT["remote_header"]};
+}}
+
 #conversation-pane {{
-    width: 44%;
+    width: 40%;
     height: 100%;
     background: {TOKYO_NIGHT["bg"]};
     border: double {TOKYO_NIGHT["border"]};
@@ -94,5 +100,58 @@ Screen {{
     background: {TOKYO_NIGHT["surface"]};
     color: {TOKYO_NIGHT["fg_dim"]};
     padding: 0 1;
+}}
+
+PolishScreen {{
+    align: center middle;
+}}
+
+#polish-dialog {{
+    width: 80%;
+    height: 80%;
+    background: {TOKYO_NIGHT["panel"]};
+    border: heavy {TOKYO_NIGHT["user_accent"]};
+    padding: 1 2;
+}}
+
+#polish-header {{
+    height: auto;
+    padding-bottom: 1;
+}}
+
+#rant-input {{
+    height: 8;
+    border: tall {TOKYO_NIGHT["border"]};
+    background: {TOKYO_NIGHT["surface"]};
+}}
+
+#rant-input:focus {{
+    border: tall {TOKYO_NIGHT["border_focus"]};
+}}
+
+#generate-btn {{
+    margin-top: 1;
+    width: auto;
+}}
+
+#polish-status {{
+    height: auto;
+    padding: 1 0;
+}}
+
+#polish-options {{
+    height: 1fr;
+}}
+
+.polish-option {{
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+    background: {TOKYO_NIGHT["surface"]};
+    border: solid {TOKYO_NIGHT["border"]};
+}}
+
+.polish-option:hover {{
+    border: solid {TOKYO_NIGHT["user_accent"]};
 }}
 """

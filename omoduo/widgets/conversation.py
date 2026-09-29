@@ -15,7 +15,7 @@ class ConversationPane(Vertical):
         super().__init__(**kwargs)
         self.header_label = Static("[bold #c0caf5]CONVERSATION[/] [dim](Middle Window)[/]", id="conv-header")
         self.log_view = RichLog(highlight=True, markup=True, wrap=True, id="conversation-log")
-        self.input_field = Input(placeholder="Type your prompt... (prefix @claude, @agy, or @both to override)", id="input-box")
+        self.input_field = Input(placeholder="Type your prompt... (@claude, @agy, @remote, @both, @duo, @all)", id="input-box")
 
     def compose(self) -> ComposeResult:
         yield self.header_label

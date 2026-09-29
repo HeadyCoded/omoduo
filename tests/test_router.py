@@ -63,3 +63,38 @@ def test_fallback_default():
 
     dec = router.route("what time does the stream start?")
     assert dec.primary_engine == "claude"
+
+def test_remote_prefix():
+    router = TaskRouter()
+
+    dec = router.route("@remote fix the off-by-one in the loop")
+    assert dec.primary_engine == "remote"
+    assert dec.clean_prompt == "fix the off-by-one in the loop"
+
+    dec2 = router.route("@local add a docstring")
+    assert dec2.primary_engine == "remote"
+    assert dec2.clean_prompt == "add a docstring"
+
+def test_all_prefix():
+    router = TaskRouter()
+
+    dec = router.route("@all what does this function do?")
+    assert dec.primary_engine == "all"
+    assert dec.clean_prompt == "what does this function do?"
+
+    dec2 = router.route("@compare summarize the config module")
+    assert dec2.primary_engine == "all"
+
+def test_duo_prefix():
+    router = TaskRouter()
+
+    dec = router.route("@duo build the settings screen")
+    assert dec.primary_engine == "duo"
+    assert dec.clean_prompt == "build the settings screen"
+
+def test_stickiness_includes_new_engines():
+    router = TaskRouter()
+
+    for engine in ("remote", "all", "duo"):
+        dec = router.route("keep going", last_engine=engine)
+        assert dec.primary_engine == engine
