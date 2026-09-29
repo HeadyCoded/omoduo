@@ -2,6 +2,31 @@
 
 All notable changes to `omoduo` will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Fourth pane: the remote agent.** A new `RemoteRunner` (`omoduo/engine/remote_runner.py`) drives `aider` headlessly against a LAN-hosted Ollama rig, streamed close to verbatim into a new "Remote Agent" pane -- unlike Claude/Antigravity's structured tool-call events, aider has no such protocol, so this is a genuine plain-text terminal view rather than a reformatted summary.
+- **New routing prefixes**: `@remote`/`@local` (remote agent only), `@duo` (staged Antigravity-then-remote-agent collaboration, rehearsing the team shape for once Claude Code access ends), `@all`/`@compare` (concurrent 3-way dispatch to all engines, for side-by-side comparison -- read-only/analysis prompts only, since all three share one working directory).
+- **Team-awareness preamble** (`omoduo/engine/team.py`): every prompt sent to any engine now opens with a short briefing on the other two engines' roles and access levels -- notably that Antigravity runs with `--dangerously-skip-permissions` (no confirmation before edits/commands), so the others have context for unexplained file changes.
+- **Hallucination log** (`omoduo/engine/halluc_log.py`): `Ctrl+H` flags the most recent remote-agent reply, appended as JSONL to `~/.local/share/omoduo/hallucination-log.jsonl` for later use tightening the remote agent's Modelfile/conventions.
+- Status bar now shows the remote engine's status and whether the LAN rig is currently reachable (checked on mount and every 60s).
+- Conversation history window raised from the last 8 messages to 24 -- 8 was dropping context too aggressively for a multi-turn training/comparison session.
+
+### Changed
+- Rant -> Prompt (`Ctrl+R`) now targets the LAN rig's `qwen-noxin-14b` (hardened, anti-hallucination system prompt) instead of a generic local `llama3.2:3b`, and auto-submits picks as `@all` instead of `@both` so the remote agent is included by default.
+
+### Fixed
+- **`RemoteRunner` couldn't see files a prompt referenced.** Unlike Claude/Antigravity's arbitrary filesystem read tools, aider only sees files explicitly added to its chat session. A prompt like `@all Look at ~/Work/CONVENTIONS.md` gave Claude and Antigravity real answers but left the remote agent nothing to look at, so it just replied `"Ok."` -- indistinguishable from the pane hanging. Fixed by having `remote_runner.extract_file_paths()` scan the prompt for existing file paths (`~/`, absolute, or bare-with-extension) and pass each as `--read` before invoking aider, so `@all` comparisons are apples-to-apples. Note: this doesn't fix vague "look at X" phrasing getting a bare acknowledgment even with the file attached -- that needs an explicit ask ("summarize X", "list issues in Y"); an attempted prompt-nudge to fix this generically backfired (the model hallucinated a fake edit to unrelated, unattached files instead), so it was reverted and left as a "phrase remote prompts as explicit questions" habit instead of a code fix.
+- Two leftover `print("DEBUG ...")` calls in `app.py`'s text-selection handler -- raw prints inside a full-screen Textual app can leak into the terminal's alternate screen buffer and visually corrupt the display.
+- `_submit_prompt`'s pane-clearing only knew about the Claude/Antigravity panes, which would have left stale remote-agent output on screen across unrelated turns once the third pane existed.
+- `PolishRunner` schema/parsing: `llama3.2:3b` under Ollama's strict JSON grammar sometimes emitted a malformed nested object (one giant sentence as an object key mapped to `{}`, plus junk `{}` keys) instead of a clean array. The old parser silently swallowed this and returned the raw JSON blob as a single garbage "option." Fixed by requesting an explicit `{"options": [...]}` schema in the prompt and making the parser reject non-string / wrongly-shaped JSON with a clear `PolishError` instead of guessing.
+- `PolishScreen` keyboard shortcuts: focus stayed on the rant `TextArea` after options rendered, so pressing `1`-`9` typed a digit into the box instead of picking an option (only clicking worked). Fixed by moving focus to the first option button once results render.
+
+### Added
+- **Rant -> Prompt (`Ctrl+R`)**: New `PolishScreen` modal backed by `omoduo.engine.polish_runner.PolishRunner`. Sends a rough brain-dumped idea to a local Ollama model (default `llama3.2:3b`), which returns several distinct cleaned-up prompt options; picking one (click or `1`-`9`) auto-submits it as `@both <choice>`. Fully local and optional -- direct typed input in the main box is unaffected, and nothing is sent to Claude or Antigravity until a choice is made.
+- `PolishRunner._parse_options`: robust parsing of the local model's response -- handles a bare JSON array, a JSON object wrapping a list, markdown code fences the model added anyway, and a numbered/bulleted plain-text fallback if it ignores the JSON instruction entirely.
+- 7 new unit tests covering JSON parsing, fallback parsing, and error paths (unreachable Ollama, empty output, Ollama-reported error) in `tests/test_polish_runner.py`.
+
 ## [0.2.0] - 2026-09-16
 
 ### Fixed
